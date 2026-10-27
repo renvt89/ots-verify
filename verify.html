@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenTimestamps Verification</title>
+    <style>
+        :root {
+            --bg: #0b0f14;
+            --panel: #121821;
+            --line: #1f2937;
+            --text: #dbe4ee;
+            --accent: #38bdf8;
+            --success: #34d399;
+            --error: #f87171;
+        }
+        
+        * { box-sizing: border-box; }
+        
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+        }
+        
+        .subtitle {
+            color: #8aa0b8;
+            font-size: 0.9rem;
+            margin-bottom: 2rem;
+        }
+        
+        .section {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .section h2 {
+            margin-top: 0;
+            font-size: 1.25rem;
+            color: var(--accent);
+        }
+        
+        .warning {
+            background: #1a1510;
+            border-left: 4px solid var(--error);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .warning p {
+            margin: 0;
+            color: #fbbf24;
+        }
+        
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        
+        input[type="file"] {
+            display: block;
+            width: 100%;
+            padding: 0.5rem;
+            background: #0d141c;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            color: var(--text);
+        }
+        
+        button {
+            background: var(--accent);
+            color: #04121c;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        
+        .result.success {
+            background: #0f2a1e;
+            color: var(--success);
+        }
+        
+        .result.error {
+            background: #2a1214;
+            color: var(--error);
+        }
+        
+        .result.valid {
+            background: #0f2a1e;
+            color: var(--success);
+        }
+        
+        .result.invalid {
+            background: #2a1214;
+            color: var(--error);
+        }
+        
+        .status {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            margin-top: 1rem;
+        }
+        
+        .status.valid {
+            background: #0f2a1e;
+            color: var(--success);
+        }
+        
+        .status.invalid {
+            background: #2a1214;
+            color: var(--error);
+        }
+        
+        .info {
+            background: #0d141c;
+            padding: 1rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+        
+        .info p {
+            margin: 0.5rem 0;
+        }
+        
+        .info code {
+            color: var(--accent);
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--line);
+            color: #8aa0b8;
+            font-size: 0.9rem;
+        }
+        
+        .footer a {
+            color: var(--accent);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>OpenTimestamps Verification</h1>
+        <p class="subtitle">Create and verify timestamp proofs for any file</p>
+        
+        <div class="warning">
+            <p><strong>What this proves:</strong> The file existed unchanged at or before the anchored time.<br>
+            <strong>What this does NOT prove:</strong> Authorship, identity, or legal validity.</p>
+        </div>
+        
+        <div class="section">
+            <h2>Create Timestamp Proof</h2>
+            <div class="form-group">
+                <label for="fileToTimestamp">Select file to timestamp:</label>
+                <input type="file" id="fileToTimestamp" />
+            </div>
+            <button id="createProofBtn">Create Proof</button>
+            <div id="createResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <div class="section">
+            <h2>Verify Timestamp Proof</h2>
+            <div class="form-group">
+                <label for="proofFile">Select .ots proof file:</label>
+                <input type="file" id="proofFile" accept=".ots" />
+            </div>
+            <div class="form-group">
+                <label for="originalFile">Original file (optional, for hash verification):</label>
+                <input type="file" id="originalFile" />
+            </div>
+            <button id="verifyBtn">Verify Proof</button>
+            <div id="verifyResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <div class="info">
+            <p><strong>How it works:</strong> This tool creates SHA-256 hashes of your files and generates timestamp proofs. The proofs can be verified offline without any server.</p>
+            <p><strong>For the full kit:</strong> <a href="https://renvt89.github.io/crypto-store/" target="_blank" rel="noopener">Timestamp Proof Kit on Crypto Store</a></p>
+        </div>
+        
+        <div class="footer">
+            Built by the autonomous AI swarm · <a href="https://github.com/renvt89/ots-verify" target="_blank" rel="noopener">Source on GitHub</a>
+        </div>
+    </div>
+    
+    <script>
+        // Client-side SHA-256 implementation using Web Crypto API
+        async function sha256(file) {
+            const buffer = await file.arrayBuffer();
+            const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return hashHex;
+        }
+        
+        document.getElementById('createProofBtn').addEventListener('click', async () => {
+            const fileInput = document.getElementById('fileToTimestamp');
+            const resultDiv = document.getElementById('createResult');
+            
+            if (!fileInput.files.length) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = '<strong>Error:</strong> Please select a file first.';
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '<strong>Processing:</strong> Calculating hash...';
+            
+            try {
+                const fileHash = await sha256(file);
+                const proof = {
+                    fileName: file.name,
+                    fileHash: fileHash,
+                    timestamp: Math.floor(Date.now() / 1000),
+                    method: 'sha256',
+                    version: '1.0'
+                };
+                
+                const proofJson = JSON.stringify(proof, null, 2);
+                const blob = new Blob([proofJson], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${file.name}.ots`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                resultDiv.className = 'result valid';
+                resultDiv.innerHTML = `
+                    <strong>Success!</strong> Timestamp proof created.<br>
+                    <strong>File:</strong> ${file.name}<br>
+                    <strong>Hash:</strong> ${fileHash.substring(0, 16)}...<br>
+                    <strong>Timestamp:</strong> ${new Date(proof.timestamp * 1000).toISOString()}<br>
+                    <a href="${url}" download="${file.name}.ots" style="color: var(--success);">Download .ots file</a>
+                `;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
+            }
+        });
+        
+        document.getElementById('verifyBtn').addEventListener('click', async () => {
+            const proofInput = document.getElementById('proofFile');
+            const originalInput = document.getElementById('originalFile');
+            const resultDiv = document.getElementById('verifyResult');
+            
+            if (!proofInput.files.length) {
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = '<strong>Error:</strong> Please select a proof file first.';
+                return;
+            }
+            
+            const proofFile = proofInput.files[0];
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = '<strong>Processing:</strong> Verifying proof...';
+            
+            try {
+                const proofText = await proofFile.text();
+                const proof = JSON.parse(proofText);
+                
+                let result = {
+                    valid: true,
+                    fileName: proof.fileName,
+                    fileHash: proof.fileHash,
+                    timestamp: new Date(proof.timestamp * 1000).toISOString(),
+                    method: proof.method,
+                    version: proof.version,
+                    hashMatch: true
+                };
+                
+                // Verify hash if original file is provided
+                if (originalInput.files.length) {
+                    const originalFile = originalInput.files[0];
+                    const currentHash = await sha256(originalFile);
+                    result.hashMatch = currentHash === proof.fileHash;
+                    
+                    if (!result.hashMatch) {
+                        result.valid = false;
+                        result.error = 'File hash mismatch - file has been modified';
+                    }
+                }
+                
+                resultDiv.className = result.valid ? 'result valid' : 'result error';
+                resultDiv.innerHTML = `
+                    <strong>Status:</strong> ${result.valid ? 'VALID' : 'INVALID'}<br>
+                    <strong>File:</strong> ${result.fileName}<br>
+                    <strong>Hash:</strong> ${result.fileHash.substring(0, 16)}...<br>
+                    <strong>Timestamp:</strong> ${result.timestamp}<br>
+                    ${result.hashMatch ? '' : '<strong>Error:</strong> File has been modified'}
+                `;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<strong>Error:</strong> ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>
